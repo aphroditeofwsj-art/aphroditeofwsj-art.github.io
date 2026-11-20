@@ -51,6 +51,20 @@ python -m pygbag --build web
 
 把 `index.html`、`web.tar.gz`、`favicon.png` 放到 GitHub Pages 仓库根目录即可发布。
 
+## AI 生成素材（ComfyUI + SDXL Turbo）
+
+剧情演出里的 5 张插画（`assets/scene1..5.png`）是本地跑 **ComfyUI** 用 **SDXL Turbo** 生成的，不是网上找的图：
+
+| 文件 | 对应剧情 | 内容 |
+| --- | --- | --- |
+| `scene1.png` | 第八章：你的使命 | 失忆的勇者在晨雾中醒来，手握锈剑 |
+| `scene2.png` | 第二章：灾难降临 | 加农多夫率魔兽大军进攻白色城堡 |
+| `scene3.png` | 第四章：魔兽横行 | 月光下龇牙的浣熊魔兽 |
+| `scene4.png` | 第四章：魔兽横行 | 沼泽上空的乌贼魔兽 |
+| `scene5.png` | 第七章：世界探索 | 悬崖俯瞰海拉鲁大陆与遗迹 |
+
+工作流与可复现参数见 [docs/ai-assets.md](docs/ai-assets.md)：SDXL Turbo（fp16）、euler_ancestral / normal、6 步、CFG 1.5、1152×448 出图；再用最近邻缩小到 480×180 后放大到 960×360，把插画压成与游戏一致的像素质感。所有生成都在本地显卡完成，未使用任何在线生图服务。
+
 ## 工程说明
 
 - **跨平台资源路径**：浏览器 / Linux 的文件系统区分大小写，`graphics/Grass` 这类路径会在 Web 端静默变成空目录。资源加载统一走 `support.resolve()`，做大小写不敏感解析并对缺失资源降级，避免一帧异常拖垮整个页面。
