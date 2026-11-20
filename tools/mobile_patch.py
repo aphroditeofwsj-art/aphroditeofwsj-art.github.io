@@ -12,7 +12,7 @@ HEAD_EXTRA = '''    <meta name="viewport" content="width=device-width, initial-s
     <style id="dsh-mobile-style">
         html, body {
             margin: 0; padding: 0; width: 100%%; height: 100%%;
-            background: #05050f; overflow: hidden;
+            background: #05050f !important; overflow: hidden;
             overscroll-behavior: none; touch-action: none;
             -webkit-user-select: none; user-select: none;
             -webkit-tap-highlight-color: transparent;
