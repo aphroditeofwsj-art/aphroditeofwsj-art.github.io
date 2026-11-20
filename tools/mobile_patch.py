@@ -36,14 +36,66 @@ HEAD_EXTRA = '''    <meta name="viewport" content="width=device-width, initial-s
             display: none;
             position: fixed; inset: 0; z-index: 9999999;
             background: #05050f; color: #e8e8f0;
-            font: 500 18px/1.7 system-ui, "Microsoft YaHei", sans-serif;
-            align-items: center; justify-content: center; text-align: center;
-            padding: 24px;
+            font: 500 17px/1.7 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+            padding: 28px; box-sizing: border-box;
         }
-        @media (orientation: portrait) and (max-width: 900px) {
-            #rotate-hint { display: flex; }
+        #rotate-hint[data-dismissed="1"] { display: none !important; }
+        #rotate-hint .rh-inner {
+            position: absolute; top: 50%%; left: 50%%; transform: translate(-50%%, -50%%);
+            width: 100%%; max-width: 420px; text-align: center;
+        }
+        #rotate-hint .rh-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        #rotate-hint .rh-sub { font-size: 13px; opacity: .55; margin-bottom: 22px; }
+        #rotate-hint .rh-wx {
+            display: none; font-size: 15px; line-height: 1.9;
+            background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+            border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; text-align: left;
+        }
+        #rotate-hint .rh-wx b { color: #ffd75e; }
+        #rotate-hint .rh-btn {
+            font: 15px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: #d8d8e4; background: transparent; cursor: pointer;
+            border: 1px solid rgba(255,255,255,.25); border-radius: 999px;
+            padding: 9px 20px;
+        }
+        @media (orientation: portrait) and (max-width: 999px) {
+            #rotate-hint { display: block; }
         }
     </style>
+'''
+
+HINT_HTML = '''<div id="rotate-hint">
+    <div class="rh-inner">
+        <div class="rh-title">请把手机横过来游玩</div>
+        <div class="rh-sub">Rotate your phone to landscape</div>
+        <div class="rh-wx" id="rh-wx">
+            微信里不会跟着重力感应转屏：<br>
+            点右上角 <b>···</b> → <b>在浏览器打开</b><br>
+            用系统浏览器打开后横屏即可。
+        </div>
+        <button class="rh-btn" id="rh-skip">仍然竖屏玩（画面会很小）</button>
+    </div>
+</div>
+'''
+
+HINT_JS = '''<script id="dsh-mobile-script">
+(function () {
+    var hint = document.getElementById('rotate-hint');
+    if (!hint) return;
+    var ua = (navigator.userAgent || '').toLowerCase();
+    var wx = document.getElementById('rh-wx');
+    if (wx && (ua.indexOf('micromessenger') !== -1 || ua.indexOf('weibo') !== -1)) {
+        wx.style.display = 'block';
+    }
+    var skip = document.getElementById('rh-skip');
+    if (skip) {
+        skip.addEventListener('click', function (e) {
+            e.preventDefault();
+            hint.setAttribute('data-dismissed', '1');
+        });
+    }
+})();
+</script>
 '''
 
 
@@ -67,10 +119,9 @@ def patch(path):
     # 3) browserfs 用仓库里的本地副本，避免再依赖 CDN
     html = html.replace('https://pygame-web.github.io/cdn/0.9.3//browserfs.min.js', 'browserfs.min.js')
 
-    # 4) 竖屏提示
-    hint = ('<div id="rotate-hint">请把手机横过来游玩<br>'
-            '<span style="font-size:14px;opacity:.6">Rotate your phone to landscape</span></div>\n')
-    html = html.replace('<body>', '<body>\n' + hint, 1)
+    # 4) 竖屏提示 + 微信引导
+    html = html.replace('<body>', '<body>\n' + HINT_HTML, 1)
+    html = html.replace('</body>', HINT_JS + '</body>', 1)
 
     p.write_text(html, encoding='utf-8')
     print('patched:', p)
