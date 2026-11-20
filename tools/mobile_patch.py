@@ -144,7 +144,8 @@ def patch(path):
     html = html.replace('ume_block : 1,', 'ume_block : 0,')
 
     # 3) 运行时依赖全部走本地 cdn/（配合 tools/vendor_cdn.py）
-    html = html.replace('https://pygame-web.github.io/cdn/', 'cdn/')
+    #    注意：vtx.js 里有 dynamic import()，模块说明符必须以 ./ 开头，否则浏览器拒绝解析
+    html = html.replace('https://pygame-web.github.io/cdn/', './cdn/')
     html = re.sub(r'[ \t]*navigator\.serviceWorker\.register\([^\n]*\n', '', html)
 
     # 4) 竖屏提示 + 微信引导
