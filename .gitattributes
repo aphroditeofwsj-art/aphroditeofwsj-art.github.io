@@ -1,0 +1,4 @@
+cdn/** -text
+*.wasm binary
+*.data binary
+*.whl binary

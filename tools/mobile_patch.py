@@ -1,6 +1,7 @@
-"""把 pygbag 产出的 index.html 改成移动端友好（构建后处理，可重复执行）。
+"""把 pygbag 产出的 index.html 改成：桌面保持原样 + 移动端自适应 + 运行时依赖本地化。
 
 用法: python tools/mobile_patch.py web/build/web/index.html
+（需先运行 tools/vendor_cdn.py 把 cdn/ 目录下载下来）
 """
 import re
 import sys
@@ -10,28 +11,28 @@ MARK = 'data-dsh-mobile'
 
 HEAD_EXTRA = '''    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" %s>
     <style id="dsh-mobile-style">
-        html, body {
-            margin: 0; padding: 0; width: 100%%; height: 100%%;
-            background: #05050f !important; overflow: hidden;
-            overscroll-behavior: none; touch-action: none;
-            -webkit-user-select: none; user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
+        /* ---- 加载页美化（全端生效，pygbag 默认是绿底蓝字） ---- */
+        #infobox {
+            background: transparent !important;
+            color: #c9cde0 !important;
+            font: 500 15px/1.7 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+            text-align: center !important;
         }
-        /* 保持 16:9，多出来的地方留黑边，不要把画面拉变形 */
-        body {
-            display: flex; align-items: center; justify-content: center;
-            position: fixed; inset: 0;
+        #status {
+            color: #7f8499 !important;
+            font: 400 13px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+            margin-left: 0 !important;
         }
-        canvas.emscripten {
-            position: relative !important;
-            top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
-            width: min(100vw, calc(100vh * 16 / 9)) !important;
-            height: min(100vh, calc(100vw * 9 / 16)) !important;
-            max-width: 100vw !important;
-            max-height: 100vh !important;
-            touch-action: none;
+        #progress {
+            height: 4px !important;
+            width: 240px !important;
+            margin: 10px auto 0 !important;
+            display: block;
+            accent-color: #ffd75e;
+            border-radius: 2px;
         }
+
+        /* ---- 竖屏提示层（只在竖屏小屏出现） ---- */
         #rotate-hint {
             display: none;
             position: fixed; inset: 0; z-index: 9999999;
@@ -58,28 +59,34 @@ HEAD_EXTRA = '''    <meta name="viewport" content="width=device-width, initial-s
             border: 1px solid rgba(255,255,255,.25); border-radius: 999px;
             padding: 9px 20px;
         }
+
+        /* ---- 只有触屏 / 小屏才接管布局；桌面(鼠标)保持 pygbag 原样铺满 ---- */
+        @media (pointer: coarse), (max-width: 999px) {
+            html, body {
+                margin: 0; padding: 0; width: 100%%; height: 100%%;
+                background: #05050f !important; overflow: hidden;
+                overscroll-behavior: none; touch-action: none;
+                -webkit-user-select: none; user-select: none;
+                -webkit-tap-highlight-color: transparent;
+                -webkit-touch-callout: none;
+            }
+            body {
+                display: flex; align-items: center; justify-content: center;
+                position: fixed; inset: 0;
+            }
+            /* 保持 16:9，多出来的地方留黑边，不要把画面拉变形 */
+            canvas.emscripten {
+                position: relative !important;
+                top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
+                width: min(100vw, calc(100vh * 16 / 9)) !important;
+                height: min(100vh, calc(100vw * 9 / 16)) !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                touch-action: none;
+            }
+        }
         @media (orientation: portrait) and (max-width: 999px) {
             #rotate-hint { display: block; }
-        }
-        /* 加载页：pygbag 默认是绿底蓝字，太扎眼，改成和游戏一致的暗色 */
-        #infobox {
-            background: transparent !important;
-            color: #c9cde0 !important;
-            font: 500 15px/1.7 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
-            text-align: center !important;
-        }
-        #status {
-            color: #7f8499 !important;
-            font: 400 13px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
-            margin-left: 0 !important;
-        }
-        #progress {
-            height: 4px !important;
-            width: 240px !important;
-            margin: 10px auto 0 !important;
-            display: block;
-            accent-color: #ffd75e;
-            border-radius: 2px;
         }
     </style>
 '''
@@ -136,8 +143,9 @@ def patch(path):
     # 2) 浏览器端不需要媒体手势门槛（手机上第一次点击自然会解锁音频）
     html = html.replace('ume_block : 1,', 'ume_block : 0,')
 
-    # 3) browserfs 用仓库里的本地副本，避免再依赖 CDN
-    html = html.replace('https://pygame-web.github.io/cdn/0.9.3//browserfs.min.js', 'browserfs.min.js')
+    # 3) 运行时依赖全部走本地 cdn/（配合 tools/vendor_cdn.py）
+    html = html.replace('https://pygame-web.github.io/cdn/', 'cdn/')
+    html = re.sub(r'[ \t]*navigator\.serviceWorker\.register\([^\n]*\n', '', html)
 
     # 4) 竖屏提示 + 微信引导
     html = html.replace('<body>', '<body>\n' + HINT_HTML, 1)
