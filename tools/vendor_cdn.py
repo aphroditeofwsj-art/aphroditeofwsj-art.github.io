@@ -35,6 +35,26 @@ def fetch(url, dest):
     return f'{len(data)/1024:.0f} KB'
 
 
+TEXT_FILES = {'vtx.js', 'index-0.9.3-cp312.json'}
+CDN_ABS = 'https://pygame-web.github.io/cdn/'
+
+
+def rewrite_local_refs(dest):
+    """把文件内部残留的 CDN 绝对地址改成站点根路径 /cdn/。
+
+    - index-*.json 里的 "-CDN-" 会被运行库当作包前缀拼接
+    - vtx.js 里的兜底地址同理
+    站点部署在域名根目录，所以用 /cdn/ 这种绝对路径最稳。
+    """
+    if dest.name not in TEXT_FILES:
+        return
+    text = dest.read_text(encoding='utf-8')
+    if CDN_ABS not in text:
+        return
+    dest.write_text(text.replace(CDN_ABS, '/cdn/'), encoding='utf-8')
+    print(f'  rewrote CDN refs in cdn/{dest.name}')
+
+
 def main():
     root = Path(sys.argv[1] if len(sys.argv) > 1 else 'web/build/web')
     cdn_dir = root / 'cdn'
@@ -47,6 +67,7 @@ def main():
             if dest.exists():
                 total += dest.stat().st_size
             print(f'  {result:>10}  cdn/{rel}')
+            rewrite_local_refs(dest)
         except Exception as e:
             print(f'  FAILED     cdn/{rel}  ({e})')
     print(f'\nvendored into {cdn_dir}  ({total/1024/1024:.2f} MB)')
