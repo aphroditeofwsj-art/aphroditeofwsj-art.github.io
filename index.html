@@ -1,13 +1,13 @@
 <html lang="en-us"><script src="https://pygame-web.github.io/cdn/0.9.3/pythons.js" type=module id="site" data-python="python3.12" data-LINES=42 data-COLUMNS=132 data-os="vtx,snd,gui" async defer>#<!--
 
 print("""
-Loading web from web.apk
+Loading 海拉鲁失落王国 Lost Kingdom of Hyrule from web.apk
     Pygbag Version : 0.9.3
     Template Version : 0.9.3
     Python  : 3.12
     CDN URL : https://pygame-web.github.io/cdn/0.9.3/
     Screen  : 1280x720
-    Title   : web
+    Title   : 海拉鲁失落王国 Lost Kingdom of Hyrule
     Folder  : web
     Authors : pgw
     SPDX-License-Identifier: cookiecutter.spdx
@@ -178,7 +178,7 @@ function show_infobox() {
 
 </script>
 
-    <title>web</title>
+    <title>海拉鲁失落王国 Lost Kingdom of Hyrule</title>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" data-dsh-mobile>
@@ -233,6 +233,26 @@ function show_infobox() {
         }
         @media (orientation: portrait) and (max-width: 999px) {
             #rotate-hint { display: block; }
+        }
+        /* 加载页：pygbag 默认是绿底蓝字，太扎眼，改成和游戏一致的暗色 */
+        #infobox {
+            background: transparent !important;
+            color: #c9cde0 !important;
+            font: 500 15px/1.7 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+            text-align: center !important;
+        }
+        #status {
+            color: #7f8499 !important;
+            font: 400 13px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+            margin-left: 0 !important;
+        }
+        #progress {
+            height: 4px !important;
+            width: 240px !important;
+            margin: 10px auto 0 !important;
+            display: block;
+            accent-color: #ffd75e;
+            border-radius: 2px;
         }
     </style>
     <meta name="mobile-web-app-capable" content="yes">

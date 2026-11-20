@@ -61,6 +61,26 @@ HEAD_EXTRA = '''    <meta name="viewport" content="width=device-width, initial-s
         @media (orientation: portrait) and (max-width: 999px) {
             #rotate-hint { display: block; }
         }
+        /* 加载页：pygbag 默认是绿底蓝字，太扎眼，改成和游戏一致的暗色 */
+        #infobox {
+            background: transparent !important;
+            color: #c9cde0 !important;
+            font: 500 15px/1.7 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+            text-align: center !important;
+        }
+        #status {
+            color: #7f8499 !important;
+            font: 400 13px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+            margin-left: 0 !important;
+        }
+        #progress {
+            height: 4px !important;
+            width: 240px !important;
+            margin: 10px auto 0 !important;
+            display: block;
+            accent-color: #ffd75e;
+            border-radius: 2px;
+        }
     </style>
 '''
 
