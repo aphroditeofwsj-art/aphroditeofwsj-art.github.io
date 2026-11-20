@@ -56,11 +56,18 @@ python code/main.py
 pip install pygbag
 # 构建目录里需要有 main.py 与 graphics / audio / map 资源
 set PYTHONUTF8=1
-python -m pygbag --build web
+python -m pygbag --build --title "海拉鲁失落王国 Lost Kingdom of Hyrule" web
 # 产物在 web/build/web/：index.html、web.tar.gz、favicon.png
+
+# 1) 把运行时依赖（CPython wasm/data、pygame-ce 轮子等 ~22MB）下载到本地，脱离 CDN
+python tools/vendor_cdn.py web/build/web
+# 2) 打移动端补丁：视口、横屏提示、16:9 留白、CDN 改写垫片（桌面端不受影响）
+python tools/mobile_patch.py web/build/web/index.html
 ```
 
-把 `index.html`、`web.tar.gz`、`favicon.png` 放到 GitHub Pages 仓库根目录即可发布。
+把 `index.html`、`web.tar.gz`、`favicon.png`、`cdn/` 一起放到 GitHub Pages 仓库根目录即可发布。
+
+> 说明：`web.apk` 是 pygbag 给 itch.io 用的打包格式，GitHub Pages 用不到（页面走 `web.tar.gz`），已从仓库移除；由 `.gitignore` 忽略。站点使用 `/cdn/` 绝对路径，因此需要部署在域名根目录。
 
 ## AI 生成素材（ComfyUI + SDXL Turbo）
 
