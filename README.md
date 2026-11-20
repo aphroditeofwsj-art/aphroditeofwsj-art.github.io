@@ -83,6 +83,20 @@ python tools/mobile_patch.py web/build/web/index.html
 
 工作流与可复现参数见 [docs/ai-assets.md](docs/ai-assets.md)：SDXL Turbo（fp16）、euler_ancestral / normal、6 步、CFG 1.5、1152×448 出图；再用最近邻缩小到 480×180 后放大到 960×360，把插画压成与游戏一致的像素质感。所有生成都在本地显卡完成，未使用任何在线生图服务。
 
+## ComfyUI 怪物精灵工作流
+
+游戏里的 4 类怪物（乌贼 / 浣熊 / 幽灵 / 竹妖）也用 ComfyUI 复现了像素精灵版本，工作流本身可以直接拖进 ComfyUI 打开复用：
+
+![ComfyUI 工作流与产出](docs/comfy/workflow-preview.png)
+
+- **工作流文件**：[`docs/comfy/monster-sprites.workflow.json`](docs/comfy/monster-sprites.workflow.json)（ComfyUI 界面直接打开）
+- **接口格式**：[`docs/comfy/monster-sprites.api.json`](docs/comfy/monster-sprites.api.json)（`/prompt` 批量出图）
+- **说明 / 提示词 / 调参记录**：[`docs/comfy/README.md`](docs/comfy/README.md)
+- **产出**：[`docs/comfy/samples/`](docs/comfy/samples)
+
+流程要点：SDXL Turbo 出 1024×1024 → `ImageScale` 最近邻降到 **64×64** → 再最近邻放大到 **512×512**，
+得到边缘硬、色块干净的像素质感；单张 5–10 秒，4 只怪物共 4 个种子可复现。
+
 ## 工程说明
 
 - **跨平台资源路径**：浏览器 / Linux 的文件系统区分大小写，`graphics/Grass` 这类路径会在 Web 端静默变成空目录。资源加载统一走 `support.resolve()`，做大小写不敏感解析并对缺失资源降级，避免一帧异常拖垮整个页面。
