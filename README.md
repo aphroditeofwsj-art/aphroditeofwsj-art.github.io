@@ -83,19 +83,24 @@ python tools/mobile_patch.py web/build/web/index.html
 
 工作流与可复现参数见 [docs/ai-assets.md](docs/ai-assets.md)：SDXL Turbo（fp16）、euler_ancestral / normal、6 步、CFG 1.5、1152×448 出图；再用最近邻缩小到 480×180 后放大到 960×360，把插画压成与游戏一致的像素质感。所有生成都在本地显卡完成，未使用任何在线生图服务。
 
-## ComfyUI 怪物精灵工作流
+## ComfyUI 复刻游戏内怪物
 
-游戏里的 4 类怪物（乌贼 / 浣熊 / 幽灵 / 竹妖）也用 ComfyUI 复现了像素精灵版本，工作流本身可以直接拖进 ComfyUI 打开复用：
+游戏里 4 只 64×64 的像素怪物（乌贼 / 浣熊 / 幽灵 / 竹妖），用 ComfyUI **img2img** 复刻成同造型的高清版本，
+工作流可以直接拖进 ComfyUI 打开复用。
 
-![ComfyUI 工作流与产出](docs/comfy/workflow-preview.png)
+![ComfyUI 工作流与原图对比](docs/comfy/workflow-preview.png)
 
-- **工作流文件**：[`docs/comfy/monster-sprites.workflow.json`](docs/comfy/monster-sprites.workflow.json)（ComfyUI 界面直接打开）
-- **接口格式**：[`docs/comfy/monster-sprites.api.json`](docs/comfy/monster-sprites.api.json)（`/prompt` 批量出图）
+> 对比图中：上排为游戏内原图，下排为 AI 复刻。
+
+- **工作流文件**：[`docs/comfy/monster-repro.workflow.json`](docs/comfy/monster-repro.workflow.json)（ComfyUI 界面直接打开）
+- **接口格式**：[`docs/comfy/monster-repro.api.json`](docs/comfy/monster-repro.api.json)（`/prompt` 批量复刻）
+- **参考图**：[`docs/comfy/references/`](docs/comfy/references)（原精灵最近邻放大到 512）
 - **说明 / 提示词 / 调参记录**：[`docs/comfy/README.md`](docs/comfy/README.md)
 - **产出**：[`docs/comfy/samples/`](docs/comfy/samples)
 
-流程要点：SDXL Turbo 出 1024×1024 → `ImageScale` 最近邻降到 **64×64** → 再最近邻放大到 **512×512**，
-得到边缘硬、色块干净的像素质感；单张 5–10 秒，4 只怪物共 4 个种子可复现。
+流程要点：原精灵最近邻放大 512 → `VAEEncode` → `KSampler` **denoise 0.45** 重绘 → `VAEDecode`，
+出图后按原图 alpha 抠图并缩回游戏尺寸（64×64 / 240×240）；单张 2–3 秒，4 个种子可复现。
+denoise 是关键：高于 0.6 配色会漂移，低于 0.3 等于没有重绘。
 
 ## 工程说明
 

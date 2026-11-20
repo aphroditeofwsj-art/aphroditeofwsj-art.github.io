@@ -1,79 +1,81 @@
-# ComfyUI 怪物精灵工作流
+# ComfyUI 复刻游戏内怪物精灵
 
-用本地 **ComfyUI + SDXL Turbo** 复现《海拉鲁失落王国》里 4 类怪物的像素精灵，
-工作流本身可以直接拖进 ComfyUI 打开、改提示词、换种子后复跑。
+用本地 **ComfyUI + SDXL Turbo** 把游戏里 4 只 64×64 的像素怪物，用 img2img 重绘成同造型的高清版本。
+工作流可以直接拖进 ComfyUI 打开、换参考图后复用。
 
-![工作流与产出](workflow-preview.png)
+![工作流与对比](workflow-preview.png)
+
+> 对比图：**上排是游戏内原图，下排是 AI 复刻**（乌贼 / 浣熊 / 幽灵 / 竹妖）。
 
 ## 文件
 
 | 文件 | 用途 |
 | --- | --- |
-| `monster-sprites.workflow.json` | **ComfyUI 界面工作流**：在 ComfyUI 里拖入 / `工作流 → 打开` 即可加载 |
-| `monster-sprites.api.json` | `/prompt` 接口格式，用于脚本批量出图 |
-| `generate.py` | 批量出图脚本（改提示词、种子后直接跑） |
-| `samples/*.png` | 本次实际生成的 4 张怪物精灵（512×512） |
-| `workflow-preview.png` | 工作流界面截图 + 4 张产出的组合图 |
+| `monster-repro.workflow.json` | **ComfyUI 界面工作流**：拖进 ComfyUI 或 `工作流 → 打开` 即可 |
+| `monster-repro.api.json` | `/prompt` 接口格式，脚本批量复刻 |
+| `generate.py` | 批量复刻脚本（含抠图与等比缩回游戏尺寸） |
+| `references/*.png` | 参考图：原精灵用 **最近邻** 放大到 512（放进 ComfyUI 的 `input/` 目录） |
+| `samples/*.png` | 4 只怪物的复刻成品（512×512，带透明通道） |
+| `monster-compare.png` | 原图 vs 复刻 对比图 |
 
 ## 环境
 
-- ComfyUI `0.39.2`（本地源码部署，`--listen 127.0.0.1 --port 8188`）
+- ComfyUI `0.39.2`（本地部署，`--listen 127.0.0.1 --port 8188`）
 - 模型：`sd_xl_turbo_1.0_fp16.safetensors`（SDXL Turbo，无 LoRA / 无 ControlNet）
-- 显卡：RTX 5050 Laptop（8 GB VRAM），单张耗时 **5–10 秒**
-- 采样：`euler_ancestral` + `normal`，**6 steps**，**CFG 1.5**，1024×1024 出图
+- 显卡：RTX 5050 Laptop（8 GB VRAM），单张 **2–3 秒**
 
 ## 工作流结构
 
 ```
-CheckpointLoaderSimple → CLIPTextEncode(正) ┐
-                       → CLIPTextEncode(负) ├→ KSampler → VAEDecode
-                       → EmptyLatentImage   ┘                 │
-                                                              ▼
-                              SaveImage ← ImageScale(512) ← ImageScale(64)
+LoadImage(参考精灵) → ImageScale(nearest 512) → VAEEncode ┐
+                                                          ├→ KSampler(denoise 0.45) → VAEDecode → SaveImage
+CheckpointLoaderSimple → CLIP正向 / CLIP负向 ─────────────┘
 ```
 
 | 节点 | 作用 | 关键参数 |
 | --- | --- | --- |
-| `CheckpointLoaderSimple` | 载入 SDXL Turbo | `sd_xl_turbo_1.0_fp16.safetensors` |
-| `CLIPTextEncode` ×2 | 正向 / 负向提示词 | 见下表；负向统一排除写实风、文字、水印 |
-| `EmptyLatentImage` | 出图尺寸 | 1024 × 1024，batch 1 |
-| `KSampler` | 采样 | seed 可控，6 steps，CFG 1.5，euler_ancestral / normal |
-| `VAEDecode` | 解码成图像 | — |
-| `ImageScale` #1 | **像素化降采样** | `nearest-exact`，1024 → **64×64** |
-| `ImageScale` #2 | **像素化放大** | `nearest-exact`，64 → **512×512** |
-| `SaveImage` | 落盘 | 前缀 `monster_sprite` |
+| `LoadImage` | 载入参考图 | 原精灵最近邻放大后的 512×512 |
+| `ImageScale` | 统一输入尺寸 | `nearest-exact`，512 × 512 |
+| `VAEEncode` | 图像编码进潜空间 | 供 img2img 使用 |
+| `CLIPTextEncode` ×2 | 描述该怪物的外观 / 排除项 | 见下表 |
+| `KSampler` | img2img 重绘 | **denoise 0.45**，10 steps，CFG 1.8，euler_ancestral |
+| `VAEDecode` → `SaveImage` | 出图落盘 | 前缀 `monster_repro` |
 
-**为什么先降后升**：SDXL 直接生成的图边缘是平滑渐变的，和游戏 16-bit 像素风不搭。
-先用最近邻插值压到 64×64 丢掉细节，再用最近邻放大回 512，就得到边缘硬、色块干净的像素画，
-放大过程不会引入模糊——这是把 AI 插画转成游戏可用像素素材的关键一步。
+**denoise 为什么取 0.45**：这是复刻与重绘的平衡点。
 
-## 4 只怪物的提示词与结果
+- `> 0.6`：配色和造型会被改掉（实测乌贼从橙色变成黄色）
+- `< 0.3`：几乎等于原图放大，没有重绘价值
+- `0.45`：保留原配色、轮廓、五官位置，同时让边缘和阴影更自然
 
-统一风格后缀：`16-bit pixel art, SNES retro game sprite, limited palette, bold black outline, flat shading, centered single character on plain dark background, game asset`
+出图后会再用**原图的 alpha 蒙版**裁剪（这一步在 `generate.py` 里做，不占 GPU），
+保证剪影与游戏内精灵完全一致，然后等比缩回 64×64（浣熊 BOSS 是 240×240）。
 
-| 怪物 | seed | 提示词主体 | 产出 |
+## 4 只怪物的提示词
+
+统一负向词：`blurry, low quality, text, watermark, photo, 3d render, realistic, scenery, background objects, extra limbs, different colors`
+
+| 怪物 | seed | 提示词 | 产出 |
 | --- | --- | --- | --- |
-| 乌贼 squid | 7101 | cute but menacing squid monster with long tentacles, cyan and teal body, glowing yellow eyes, floating over swamp | `samples/squid.png` |
-| 浣熊 raccoon | 7102 | fierce giant raccoon beast with sharp claws, grey and black striped fur, glowing red eyes, crouching in dark mossy forest | `samples/raccoon.png` |
-| 幽灵 spirit | 7103 | ghostly spirit wisp monster, translucent pale blue body, crackling white lightning around it, glowing empty eyes | `samples/spirit.png` |
-| 竹妖 bamboo | 7104 | plant monster made of green bamboo stalks, sharp leaf blades, wooden bark face, sinister grin | `samples/bamboo.png` |
+| 乌贼 squid | 5150 | orange and coral squid monster with spiky tentacles pointing outward, two black dot eyes, dark red mouth band, thin orange legs, 16-bit pixel art, thick black outline, flat colors, plain black background | `samples/squid.png` |
+| 浣熊 raccoon | 5151 | tan and brown raccoon beast, cream fur on top of head, angry face with fangs, dark red eyes, pink belly, big paws with claws, 16-bit pixel art, … | `samples/raccoon.png` |
+| 幽灵 spirit | 5152 | pale blue and white ghost blob monster, light blue outline, two black oval eyes, rounded body, 16-bit pixel art, … | `samples/spirit.png` |
+| 竹妖 bamboo | 5153 | green bamboo plant monster, lighter green face area, dark green outline, tendril legs, 16-bit pixel art, … | `samples/bamboo.png` |
 
 ## 怎么用
 
-**在 ComfyUI 里**：把 `monster-sprites.workflow.json` 直接拖进 ComfyUI 画布（或 `工作流 → 打开`），
-改 `CLIPTextEncode` 里的提示词、改 `KSampler` 的 seed，点「运行」即可。工作流里带一个 Note 节点记录参数。
+1. 把 `references/*.png` 拷进 ComfyUI 的 `input/` 目录
+2. 在 ComfyUI 里打开 `monster-repro.workflow.json`
+3. 改 `LoadImage` 的参考图 + `CLIPTextEncode` 的提示词，点「运行」
 
-**用脚本批量跑**（需要服务在 8188 端口）：
+或者用脚本批量跑（服务需在 8188 端口）：
 
 ```bash
 python docs/comfy/generate.py
 ```
 
-脚本会把 4 只怪物依次跑一遍并保存到 `docs/comfy/samples/`。
+## 经验
 
-## 调参经验
-
-- **步数**：Turbo 模型 4–8 步足够，超过 10 步反而可能出现噪点；6 步是画质/速度的平衡点
-- **CFG**：Turbo 建议 1.0–2.0，给太高（>3）会过曝、色块崩
-- **种子**：同一提示词换种子，怪物姿势/配色变化很大，批量出 4–8 张再挑是常规做法
-- **像素化尺寸**：`64×64` 适合游戏内 32–64px 的精灵；想要更粗的颗粒可以降到 48 或 32
+- **参考图必须用最近邻放大**：双线性放大会把像素边缘糊成灰边，模型会跟着画出模糊轮廓
+- **CFG 别开高**：Turbo 模型 1.0–2.0 即可，> 3 会过曝、色块崩坏
+- **同一种子可复现**：同一参考图 + 同一提示词 + 同一种子，结果稳定，方便成套出图
+- **透明通道不要交给模型**：让模型画纯黑背景，出图后按原图 alpha 裁剪，比让 AI 画透明底可靠得多
