@@ -126,6 +126,44 @@ HINT_JS = '''<script id="dsh-mobile-script">
 '''
 
 
+SHIM_JS = '''<script id="dsh-cdn-shim">
+/* pygbag 的 Python 端（打包在 main.data 里）仍然会按绝对地址去 CDN 取包索引和轮子，
+   这里在 fetch / XHR 层把它改写到本地 /cdn/，实现完全不依赖外网。 */
+(function () {
+    var REMOTE = 'https://pygame-web.github.io/cdn/';
+    var LOCAL = '/cdn/';
+    function localize(url) {
+        if (typeof url === 'string' && url.indexOf(REMOTE) === 0) {
+            return LOCAL + url.slice(REMOTE.length);
+        }
+        return url;
+    }
+    if (window.fetch) {
+        var _fetch = window.fetch;
+        window.fetch = function (input, init) {
+            try {
+                if (typeof input === 'string') {
+                    input = localize(input);
+                } else if (input && input.url && input.url.indexOf(REMOTE) === 0) {
+                    input = localize(input.url);
+                }
+            } catch (e) {}
+            return _fetch.call(this, input, init);
+        };
+    }
+    if (window.XMLHttpRequest) {
+        var _open = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url) {
+            var args = Array.prototype.slice.call(arguments);
+            args[1] = localize(url);
+            return _open.apply(this, args);
+        };
+    }
+})();
+</script>
+'''
+
+
 def patch(path):
     p = Path(path)
     html = p.read_text(encoding='utf-8')
@@ -151,6 +189,12 @@ def patch(path):
     # 4) 竖屏提示 + 微信引导
     html = html.replace('<body>', '<body>\n' + HINT_HTML, 1)
     html = html.replace('</body>', HINT_JS + '</body>', 1)
+
+    # 5) CDN 请求改写垫片（必须早于 type=module 的 pythons.js 执行）
+    html = html.replace('<head>', '<head>\n' + SHIM_JS, 1)
+    if 'dsh-cdn-shim' not in html:
+        # 某些模板没有显式 <head>，退而插到 <html ...> 之后
+        html = re.sub(r'(<html[^>]*>)', r'\1\n' + SHIM_JS.replace('\\', '\\\\'), html, count=1)
 
     p.write_text(html, encoding='utf-8')
     print('patched:', p)
